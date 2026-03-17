@@ -1,5 +1,5 @@
 ---
-name: sync-i18n-via-en
+name: sync-locales-from-en
 description:
   Sync all locale translation files with en/ as the base reference. Finds missing keys, translates them, and merges back.
 user-invocable: true
@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 batchSize: 200
 ---
 
-# sync-i18n-via-en
+# sync-locales-from-en
 
 Synchronize all locale translation files with `messages/en/` as the base reference. Messages use a directory-based structure: `messages/{locale}/{file}.json`.
 
@@ -41,7 +41,7 @@ Synchronize all locale translation files with `messages/en/` as the base referen
 
 ## Scripts
 
-All scripts live in `.claude/skills/i18n-translation-skill/scripts/`:
+All scripts live in `.claude/skills/sync-locales-from-en/scripts/`:
 
 - `helpers.ts` — Shared utilities (flatten, unflatten, key ordering, locale discovery, temp dir constants)
 - `compare-locales.ts` — Find missing keys per locale per file, output report to `temp/YYYY-MM-DD/reference/`
@@ -53,7 +53,7 @@ All scripts live in `.claude/skills/i18n-translation-skill/scripts/`:
 ## Temp directory layout
 
 ```
-.claude/skills/i18n-translation-skill/temp/YYYY-MM-DD/
+.claude/skills/sync-locales-from-en/temp/YYYY-MM-DD/
   reference/
     missing-keys-report.json
     main.json                    # English values for missing keys (union across locales)
@@ -96,7 +96,7 @@ After LLM translation:
 
 ## Execution Steps
 
-When `/sync-i18n-via-en` is invoked, follow these steps exactly:
+When `/sync-locales-from-en` is invoked, follow these steps exactly:
 
 ### Step 1: Compare
 
@@ -143,7 +143,7 @@ Translation rules:
 Read the file, translate all values, write it back.
 ```
 
-`{intermediate_file}` should be set to `.claude/skills/i18n-translation-skill/temp/YYYY-MM-DD/intermediate/{locale}.json`.
+`{intermediate_file}` should be set to `.claude/skills/sync-locales-from-en/temp/YYYY-MM-DD/intermediate/{locale}.json`.
 
 After launching all subagents, wait for all to complete by polling with `TaskOutput`.
 

@@ -139,7 +139,7 @@ async function main() {
   if (allPassed) {
     console.log('\n🎉 All locale files match en/ structure!');
   } else {
-    console.log('\n💥 Some locale files have issues. Run /sync-i18n-via-en to fix.');
+    console.log('\n💥 Some locale files have issues. Run /sync-locales-from-en to fix.');
     process.exit(1);
   }
 }

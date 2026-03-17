@@ -40,5 +40,5 @@ message_old
 auto_update_script.py
 
 # i18n translation temp files
-.agents/skills/i18n-translation-skill/temp/
-.claude/skills/i18n-translation-skill/temp/
+.agents/skills/sync-locales-from-en/temp/
+.claude/skills/sync-locales-from-en/temp/

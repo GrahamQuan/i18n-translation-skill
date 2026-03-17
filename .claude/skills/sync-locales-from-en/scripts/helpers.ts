@@ -20,7 +20,7 @@ export interface MissingReport {
 const MESSAGES_DIR = path.join(process.cwd(), 'messages');
 
 // Temp directory structure for translation workflow
-const SKILL_DIR = path.join(process.cwd(), '.claude', 'skills', 'i18n-translation-skill');
+const SKILL_DIR = path.join(process.cwd(), '.claude', 'skills', 'sync-locales-from-en');
 const TODAY = new Date().toISOString().split('T')[0];
 const TEMP_ROOT = path.join(SKILL_DIR, 'temp', TODAY);
 export const REFERENCE_DIR = path.join(TEMP_ROOT, 'reference');
