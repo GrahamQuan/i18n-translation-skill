@@ -13,8 +13,8 @@
     "i18n:test": "tsx .claude/skills/sync-locales-from-en/scripts/test-locales.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Graham Quan",
+  "license": "MIT",
   "packageManager": "pnpm@10.5.2",
   "devDependencies": {
     "@types/node": "^25.5.0",
