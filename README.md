@@ -111,4 +111,4 @@ Subagents can freeze or be interrupted mid-translation. The `translation/` layer
 
 ## License
 
-ISC
+MIT
