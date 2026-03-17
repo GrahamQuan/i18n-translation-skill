@@ -1,0 +1,188 @@
+{
+  "components": {
+    "button": {
+      "check": "Check",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "save": "Save",
+      "close": "Close",
+      "open": "Open"
+    },
+    "input": {
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "name": "Name",
+      "phone": "Phone",
+      "address": "Address",
+      "city": "City",
+      "state": "State",
+      "zip": "Zip"
+    },
+    "select": {
+      "language": "Language",
+      "country": "Country",
+      "currency": "Currency",
+      "timezone": "Timezone",
+      "date": "Date",
+      "time": "Time",
+      "datetime": "Datetime",
+      "datetime-local": "Datetime Local"
+    }
+  },
+  "home": {
+    "meta": {
+      "title": "Home",
+      "description": "This is the home page of the website",
+      "keywords": "home, page, website"
+    },
+    "heading": {
+      "title": "Welcome to the home page",
+      "description": "This is the home page of the website"
+    },
+    "feature": {
+      "title": "Features",
+      "description": "This is the features section of the website",
+      "1": {
+        "title": "Feature 1",
+        "description": "This is the feature 1 section of the website"
+      },
+      "2": {
+        "title": "Feature 2",
+        "description": "This is the feature 2 section of the website"
+      },
+      "3": {
+        "title": "Feature 3",
+        "description": "This is the feature 3 section of the website"
+      },
+      "4": {
+        "title": "Feature 4",
+        "description": "This is the feature 4 section of the website"
+      }
+    },
+    "scenario": {
+      "title": "Scenario",
+      "description": "This is the scenario section of the website",
+      "1": {
+        "title": "Scenario 1",
+        "description": "This is the scenario 1 section of the website"
+      },
+      "2": {
+        "title": "Scenario 2",
+        "description": "This is the scenario 2 section of the website"
+      },
+      "3": {
+        "title": "Scenario 3",
+        "description": "This is the scenario 3 section of the website"
+      },
+      "4": {
+        "title": "Scenario 4",
+        "description": "This is the scenario 4 section of the website"
+      }
+    }
+  },
+  "nano-banana": {
+    "meta": {
+      "title": "nano banana",
+      "description": "This is the nano banana page of the website",
+      "keywords": "nano banana, page, website"
+    },
+    "heading": {
+      "title": "Welcome to the nano banana page",
+      "description": "This is the nano banana page of the website"
+    },
+    "feature": {
+      "title": "Features",
+      "description": "This is the features section of the website",
+      "1": {
+        "title": "Feature 1",
+        "description": "This is the feature 1 section of the website"
+      },
+      "2": {
+        "title": "Feature 2",
+        "description": "This is the feature 2 section of the website"
+      },
+      "3": {
+        "title": "Feature 3",
+        "description": "This is the feature 3 section of the website"
+      },
+      "4": {
+        "title": "Feature 4",
+        "description": "This is the feature 4 section of the website"
+      }
+    },
+    "scenario": {
+      "title": "Scenario",
+      "description": "This is the scenario section of the website",
+      "1": {
+        "title": "Scenario 1",
+        "description": "This is the scenario 1 section of the website"
+      },
+      "2": {
+        "title": "Scenario 2",
+        "description": "This is the scenario 2 section of the website"
+      },
+      "3": {
+        "title": "Scenario 3",
+        "description": "This is the scenario 3 section of the website"
+      },
+      "4": {
+        "title": "Scenario 4",
+        "description": "This is the scenario 4 section of the website"
+      }
+    }
+  },
+  "nano-banana-2": {
+    "meta": {
+      "title": "nano banana 2",
+      "description": "This is the nano banana 2 page of the website",
+      "keywords": "nano banana 2, page, website"
+    },
+    "heading": {
+      "title": "Welcome to the nano banana 2 page",
+      "description": "This is the nano banana 2 page of the website"
+    },
+    "feature": {
+      "title": "Features",
+      "description": "This is the features section of the website",
+      "1": {
+        "title": "Feature 1",
+        "description": "This is the feature 1 section of the website"
+      },
+      "2": {
+        "title": "Feature 2",
+        "description": "This is the feature 2 section of the website"
+      },
+      "3": {
+        "title": "Feature 3",
+        "description": "This is the feature 3 section of the website"
+      },
+      "4": {
+        "title": "Feature 4",
+        "description": "This is the feature 4 section of the website"
+      }
+    },
+    "scenario": {
+      "title": "Scenario",
+      "description": "This is the scenario section of the website",
+      "1": {
+        "title": "Scenario 1",
+        "description": "This is the scenario 1 section of the website"
+      },
+      "2": {
+        "title": "Scenario 2",
+        "description": "This is the scenario 2 section of the website"
+      },
+      "3": {
+        "title": "Scenario 3",
+        "description": "This is the scenario 3 section of the website"
+      },
+      "4": {
+        "title": "Scenario 4",
+        "description": "This is the scenario 4 section of the website"
+      }
+    }
+  }
+}
