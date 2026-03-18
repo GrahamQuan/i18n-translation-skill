@@ -5,6 +5,9 @@ description:
 user-invocable: true
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 batchSize: 200
+metadata:
+  author: GrahamQuan
+  version: "1.0.0"
 ---
 
 # sync-locales-from-en
