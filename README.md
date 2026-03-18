@@ -24,6 +24,36 @@ The pipeline:
 6. **Merge** — write translations into `messages/{locale}/`, preserving key order
 7. **Test** — validate all locales match en/ structure
 
+## Installation
+
+### As a Claude Code / Cursor skill
+
+1. Install the skill (method depends on skills.sh or manual installation)
+2. Add to your project's `.gitignore`:
+   ```
+   # i18n translation temp files
+   .agents/skills/sync-locales-from-en/temp/
+   .claude/skills/sync-locales-from-en/temp/
+   ```
+3. Add to your project's `package.json` scripts:
+   ```json
+   {
+     "scripts": {
+       "i18n:compare": "tsx .claude/skills/sync-locales-from-en/scripts/compare-locales.ts",
+       "i18n:extract": "tsx .claude/skills/sync-locales-from-en/scripts/extract-locales.ts",
+       "i18n:copy-draft": "tsx .claude/skills/sync-locales-from-en/scripts/copy-locales-draft.ts",
+       "i18n:unflatten": "tsx .claude/skills/sync-locales-from-en/scripts/unflatten-translations.ts",
+       "i18n:merge": "tsx .claude/skills/sync-locales-from-en/scripts/merge-translations.ts",
+       "i18n:test": "tsx .claude/skills/sync-locales-from-en/scripts/test-locales.ts"
+     }
+   }
+   ```
+4. Install dependencies: `pnpm add -D tsx @types/node`
+
+### Standalone (without AI skill)
+
+Clone this repo into your project and follow steps 2-4 above.
+
 ## Usage
 
 ### Approach 1: AI skill (recommended)
