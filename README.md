@@ -1,5 +1,7 @@
 # sync-locales-from-en
 
+English | [简体中文](./README.zh-CN.md)
+
 An AI skill that syncs locale translation files with `messages/en/` as the source of truth. Detects missing keys, translates them via LLM, and merges back — keeping key order and file structure intact.
 
 Built for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) / [Cursor](https://cursor.com/) as an installable skill, but also works standalone via `pnpm` scripts.
