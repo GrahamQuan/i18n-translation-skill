@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Unflatten translated intermediate files into final nested JSON.
- * Reads intermediate/{locale}.json (flat JSON with {file}::{dotpath} keys),
+ * Unflatten translated files into final nested JSON.
+ * Reads translation/{locale}.json (flat JSON with {file}::{dotpath} keys),
  * splits by source file, unflattens, and writes to final/{locale}/{file}.json.
  *
  * Usage: pnpm i18n:unflatten
@@ -14,7 +14,7 @@ import * as path from 'path';
 import {
   FINAL_DIR,
   getKeyOrder,
-  INTERMEDIATE_DIR,
+  TRANSLATION_DIR,
   MESSAGES_DIR_EXPORT,
   unflattenWithOrder,
   type NestedObject,
@@ -45,18 +45,18 @@ function parseIntermediateFile(filePath: string): Map<string, Record<string, str
 }
 
 async function main() {
-  console.log('🔄 Unflattening translated intermediate files...\n');
+  console.log('🔄 Unflattening translated files...\n');
 
-  if (!fs.existsSync(INTERMEDIATE_DIR)) {
-    console.error(`❌ Error: Intermediate directory not found: ${INTERMEDIATE_DIR}`);
+  if (!fs.existsSync(TRANSLATION_DIR)) {
+    console.error(`❌ Error: Translation directory not found: ${TRANSLATION_DIR}`);
     console.error('   Please run extract and translate steps first');
     process.exit(1);
   }
 
-  const intermediateFiles = fs.readdirSync(INTERMEDIATE_DIR).filter((f) => f.endsWith('.json'));
+  const translationFiles = fs.readdirSync(TRANSLATION_DIR).filter((f) => f.endsWith('.json'));
 
-  if (intermediateFiles.length === 0) {
-    console.log('🎉 No intermediate files found. Nothing to unflatten.');
+  if (translationFiles.length === 0) {
+    console.log('🎉 No translation files found. Nothing to unflatten.');
     return;
   }
 
@@ -65,9 +65,9 @@ async function main() {
 
   let totalFiles = 0;
 
-  intermediateFiles.forEach((intermediateFile) => {
-    const locale = intermediateFile.replace('.json', '');
-    const filePath = path.join(INTERMEDIATE_DIR, intermediateFile);
+  translationFiles.forEach((translationFile) => {
+    const locale = translationFile.replace('.json', '');
+    const filePath = path.join(TRANSLATION_DIR, translationFile);
     const grouped = parseIntermediateFile(filePath);
 
     grouped.forEach((flat, sourceFile) => {

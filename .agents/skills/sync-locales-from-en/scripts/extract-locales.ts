@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Extract missing locale keys into reference/ and intermediate/ directories.
+ * Extract missing locale keys into reference/ and draft/ directories.
  * - reference/{file}.json: English values for all missing keys (union across locales)
- * - intermediate/{locale}.json: Flat JSON object with {file}::{dotpath} keys and English values
+ * - draft/{locale}.json: Flat JSON object with {file}::{dotpath} keys and English values
  *
  * Usage: pnpm i18n:extract
  */
@@ -15,7 +15,7 @@ import {
   REFERENCE_DIR,
   flattenObject,
   getKeyOrder,
-  INTERMEDIATE_DIR,
+  DRAFT_DIR,
   MESSAGES_DIR_EXPORT,
   unflattenWithOrder,
   type MissingReport,
@@ -95,11 +95,11 @@ async function main() {
     console.log(`✅ reference/${file}: ${Object.keys(baseFlat).length} keys`);
   });
 
-  // Step 2: Create intermediate/{locale}.json — flat JSON with {file}::{dotpath} keys
-  console.log('\n📝 Creating intermediate flat files...\n');
+  // Step 2: Create draft/{locale}.json — flat JSON with {file}::{dotpath} keys
+  console.log('\n📝 Creating draft flat files...\n');
 
-  if (!fs.existsSync(INTERMEDIATE_DIR)) {
-    fs.mkdirSync(INTERMEDIATE_DIR, { recursive: true });
+  if (!fs.existsSync(DRAFT_DIR)) {
+    fs.mkdirSync(DRAFT_DIR, { recursive: true });
   }
 
   // Group reports by locale
@@ -126,15 +126,15 @@ async function main() {
       });
     });
 
-    const outputPath = path.join(INTERMEDIATE_DIR, `${locale}.json`);
+    const outputPath = path.join(DRAFT_DIR, `${locale}.json`);
     fs.writeFileSync(outputPath, `${JSON.stringify(flat, null, 2)}\n`);
-    console.log(`✅ intermediate/${locale}.json: ${Object.keys(flat).length} keys`);
+    console.log(`✅ draft/${locale}.json: ${Object.keys(flat).length} keys`);
   });
 
   const localeCount = localeGroups.size;
   console.log('\n✅ Extraction complete!');
   console.log(`   Reference directory: ${REFERENCE_DIR}`);
-  console.log(`   Intermediate directory: ${INTERMEDIATE_DIR}`);
+  console.log(`   Draft directory: ${DRAFT_DIR}`);
   console.log(`   Locales with missing keys: ${localeCount}`);
 }
 
