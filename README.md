@@ -28,7 +28,7 @@ The pipeline:
 
 ### Approach 1: AI skill (recommended)
 
-If you have Claude Code or Kiro installed, just run:
+If you have Claude Code or Cursor installed, just run:
 
 ```
 /sync-locales-from-en
