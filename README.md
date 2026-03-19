@@ -19,7 +19,7 @@ messages/zh/main.json  (auto-synced)
 The pipeline:
 
 1. **Compare** — find missing keys per locale
-2. **Extract** — generate flat `draft/{locale}-{NNN}.json` chunk files with `{file}::{dotpath}` keys (max 200 keys per chunk)
+2. **Extract** — generate flat `draft/{locale}-{NNN}.json` chunk files with `{file}::{dotpath}` keys (max 50 keys per chunk)
 3. **Copy draft** — copy draft → translation (preserves interrupted work)
 4. **Translate** — LLM translates `translation/{locale}-{NNN}.json` values (one subagent per chunk)
 5. **Unflatten** — convert flat translated files back to nested JSON
@@ -66,7 +66,7 @@ If you have Claude Code or Cursor installed, just run:
 /sync-locales-from-en
 ```
 
-The AI agent handles the full pipeline automatically, launching parallel translation subagents per chunk file (max 200 keys each).
+The AI agent handles the full pipeline automatically, launching parallel translation subagents per chunk file (max 50 keys each).
 
 ### Approach 2: Manual via pnpm
 
@@ -86,10 +86,10 @@ The translate step is intentionally manual — use whatever LLM or translation s
 
 ## Intermediate format
 
-Translation files use a flat JSON format split into chunks (max 200 keys per file) to avoid broken nested JSON and Write tool truncation from LLM output:
+Translation files use a flat JSON format split into chunks (max 50 keys per file) to avoid broken nested JSON and Write tool truncation from LLM output:
 
 ```json
-// draft/es-001.json (first 200 keys)
+// draft/es-001.json (first 50 keys)
 {
   "main.json::home.feature.title": "Welcome to our platform",
   "main.json::home.feature.description": "The best way to manage your projects",
@@ -114,7 +114,7 @@ This is enforced by a custom JSON serializer since V8 always enumerates integer 
 
 ### Subagent output truncation (mitigated)
 
-When a locale has many missing keys (200+), LLM subagents may truncate the output. This is now mitigated by batch chunking — `pnpm i18n:extract` splits large locales into chunk files of max 200 keys each (`es-001.json`, `es-002.json`, etc.), and one subagent handles each chunk.
+When a locale has many missing keys (50+), LLM subagents may truncate the output. This is now mitigated by batch chunking — `pnpm i18n:extract` splits large locales into chunk files of max 50 keys each (`es-001.json`, `es-002.json`, etc.), and one subagent handles each chunk.
 
 If a chunk still fails, delete the bad `translation/{locale}-{NNN}.json`, re-run `pnpm i18n:copy-draft`, and retry.
 

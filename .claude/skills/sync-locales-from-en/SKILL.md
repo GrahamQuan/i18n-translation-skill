@@ -4,7 +4,7 @@ description:
   Sync all locale translation files with en/ as the base reference. Finds missing keys, translates them, and merges back.
 user-invocable: true
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
-batchSize: 200
+batchSize: 50
 metadata:
   author: GrahamQuan
   version: "1.1.0"
@@ -50,7 +50,7 @@ All scripts live in `.claude/skills/sync-locales-from-en/scripts/`:
 
 - `helpers.ts` — Shared utilities (flatten, unflatten, key ordering, locale discovery, temp dir constants)
 - `compare-locales.ts` — Find missing keys per locale per file, output report to `temp/YYYY-MM-DD/reference/`
-- `extract-locales.ts` — Create `reference/{file}.json` (English union) and `draft/{locale}-{NNN}.json` chunks (flat key::value, max 200 keys each)
+- `extract-locales.ts` — Create `reference/{file}.json` (English union) and `draft/{locale}-{NNN}.json` chunks (flat key::value, max 50 keys each)
 - `copy-locales-draft.ts` — Copy `draft/{locale}-{NNN}.json` → `translation/{locale}-{NNN}.json`, skipping chunks already in `translation/`
 - `unflatten-translations.ts` — Read translated `translation/{locale}-{NNN}.json` chunks, merge per locale, split by file, unflatten → `final/{locale}/{file}.json`
 - `merge-translations.ts` — Merge `temp/YYYY-MM-DD/final/{locale}/{file}.json` into `messages/{locale}/{file}.json` with en key order
@@ -66,7 +66,7 @@ All scripts live in `.claude/skills/sync-locales-from-en/scripts/`:
     ui.json
     model.json
   draft/
-    de-001.json                  # Flat key::value chunks (max 200 keys each, never modified)
+    de-001.json                  # Flat key::value chunks (max 50 keys each, never modified)
     de-002.json
     es-001.json
     fr-001.json
@@ -85,7 +85,7 @@ All scripts live in `.claude/skills/sync-locales-from-en/scripts/`:
 
 ## Draft / Translation file format
 
-Files are chunked: `draft/{locale}-{NNN}.json` and `translation/{locale}-{NNN}.json` (max 200 keys per chunk). Each chunk is a flat JSON object with `{file}::{dotpath}` keys:
+Files are chunked: `draft/{locale}-{NNN}.json` and `translation/{locale}-{NNN}.json` (max 50 keys per chunk). Each chunk is a flat JSON object with `{file}::{dotpath}` keys:
 
 ```json
 {
@@ -121,7 +121,7 @@ If no missing keys are found, stop here.
 
 Run `pnpm i18n:extract` to generate:
 - `temp/YYYY-MM-DD/reference/{file}.json` — English values for all missing keys (union across locales)
-- `temp/YYYY-MM-DD/draft/{locale}-{NNN}.json` — Flat JSON chunks with `{file}::{dotpath}` keys and English values (max 200 keys per chunk)
+- `temp/YYYY-MM-DD/draft/{locale}-{NNN}.json` — Flat JSON chunks with `{file}::{dotpath}` keys and English values (max 50 keys per chunk)
 
 ### Step 3: Prepare translation/
 
@@ -213,6 +213,6 @@ Basic pipeline: compare → extract → translate (Google Translate free API) �
 - Draft/translation split: `draft/` stays pristine, `translation/` is the working copy
 - Interrupted subagents can be resumed — `translation/{locale}-{NNN}.json` persists
 - New `unflatten` step converts translated flat files back to nested JSON
-- Batch chunking (batchSize: 200): large locales split into `{locale}-001.json`, `{locale}-002.json`, etc.
-  - One subagent per chunk — prevents Write tool truncation on 200+ key locales
+- Batch chunking (batchSize: 50): large locales split into `{locale}-001.json`, `{locale}-002.json`, etc.
+  - One subagent per chunk — prevents Write tool truncation on large key sets
   - Chunks merge automatically during unflatten step

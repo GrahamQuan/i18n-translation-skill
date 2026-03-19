@@ -19,7 +19,7 @@ messages/zh/main.json  （自动同步）
 流程如下：
 
 1. **比对（Compare）** — 找出每个语言环境（locale）缺失的键
-2. **提取（Extract）** — 生成扁平化 `draft/{locale}-{NNN}.json` 分块文件，键格式为 `{file}::{dotpath}`（每块最多 200 个键）
+2. **提取（Extract）** — 生成扁平化 `draft/{locale}-{NNN}.json` 分块文件，键格式为 `{file}::{dotpath}`（每块最多 50 个键）
 3. **复制草稿（Copy draft）** — 将 `draft` 复制到 `translation`（可保留中断进度）
 4. **翻译（Translate）** — 由 LLM 翻译 `translation/{locale}-{NNN}.json` 的值（每个分块一个 subagent）
 5. **反扁平化（Unflatten）** — 将扁平文件还原为嵌套 JSON
@@ -66,7 +66,7 @@ messages/zh/main.json  （自动同步）
 /sync-locales-from-en
 ```
 
-AI agent 会自动完成整个流程，并按分块文件并行启动翻译 subagent（每块最多 200 个键）。
+AI agent 会自动完成整个流程，并按分块文件并行启动翻译 subagent（每块最多 50 个键）。
 
 ### 方式 2：手动执行 pnpm 脚本
 
@@ -86,10 +86,10 @@ pnpm i18n:test         # 校验
 
 ## 中间格式
 
-翻译文件使用扁平 JSON 格式，并按分块拆分（每文件最多 200 个键），避免 LLM 输出破坏嵌套 JSON 或 Write 工具截断：
+翻译文件使用扁平 JSON 格式，并按分块拆分（每文件最多 50 个键），避免 LLM 输出破坏嵌套 JSON 或 Write 工具截断：
 
 ```json
-// draft/es-001.json（前 200 个键）
+// draft/es-001.json（前 50 个键）
 {
   "main.json::home.feature.title": "Welcome to our platform",
   "main.json::home.feature.description": "The best way to manage your projects",
@@ -114,7 +114,7 @@ pnpm i18n:test         # 校验
 
 ### Subagent 输出被截断（已缓解）
 
-当某个语言环境（locale）缺失键较多（200+）时，LLM subagent 可能输出截断。现已通过分块机制缓解——`pnpm i18n:extract` 会将大型语言环境拆分为每块最多 200 个键的分块文件（`es-001.json`、`es-002.json` 等），每个 subagent 处理一个分块。
+当某个语言环境（locale）缺失键较多（50+）时，LLM subagent 可能输出截断。现已通过分块机制缓解——`pnpm i18n:extract` 会将大型语言环境拆分为每块最多 50 个键的分块文件（`es-001.json`、`es-002.json` 等），每个 subagent 处理一个分块。
 
 若某个分块仍然失败，删除异常的 `translation/{locale}-{NNN}.json`，重新运行 `pnpm i18n:copy-draft` 后再试。
 

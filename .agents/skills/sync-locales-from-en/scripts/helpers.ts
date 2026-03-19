@@ -30,7 +30,7 @@ export const FINAL_DIR = path.join(TEMP_ROOT, 'final');
 export const MESSAGES_DIR_EXPORT = MESSAGES_DIR;
 
 /** Maximum number of keys per chunk file */
-export const BATCH_SIZE = 200;
+export const BATCH_SIZE = 50;
 
 /**
  * Generate a chunk filename: e.g. "es-001.json"

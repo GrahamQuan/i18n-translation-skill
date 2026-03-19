@@ -1,13 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm i18n:compare)",
-      "Bash(pnpm i18n:translate)",
       "Bash(pnpm:*)",
-      "Bash(find /Users/a6677/Documents/open-source/i18n-translation-skill -not -path */node_modules/* -type d)",
       "Bash(npx tsc:*)",
-      "Bash(cp /Users/a6677/Documents/open-source/i18n-translation-skill/.claude/skills/sync-locales-from-en/SKILL.md /Users/a6677/Documents/open-source/i18n-translation-skill/.agents/skills/sync-locales-from-en/SKILL.md)",
-      "Bash(cp /Users/a6677/Documents/open-source/i18n-translation-skill/.claude/skills/sync-locales-from-en/scripts/helpers.ts /Users/a6677/Documents/open-source/i18n-translation-skill/.agents/skills/sync-locales-from-en/scripts/helpers.ts)"
+      "Edit(.claude/skills/sync-locales-from-en/temp/**)",
+      "Write(.claude/skills/sync-locales-from-en/temp/**)",
+      "Bash(xargs ls:*)",
+      "Bash(wc -l .claude/skills/sync-locales-from-en/temp/**)"
     ]
   }
 }
