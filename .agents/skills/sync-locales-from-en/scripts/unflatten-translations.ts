@@ -17,32 +17,11 @@ import {
   TRANSLATION_DIR,
   MESSAGES_DIR_EXPORT,
   unflattenWithOrder,
+  parseChunkFilename,
   type NestedObject,
 } from './helpers';
 
 const MESSAGES_DIR = MESSAGES_DIR_EXPORT;
-
-function parseIntermediateFile(filePath: string): Map<string, Record<string, string>> {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const flat = JSON.parse(content) as Record<string, string>;
-  const grouped = new Map<string, Record<string, string>>();
-
-  Object.entries(flat).forEach(([compositeKey, value]) => {
-    // Key format: {file}::{dotpath}
-    const sep = compositeKey.indexOf('::');
-    if (sep === -1) return;
-
-    const file = compositeKey.substring(0, sep);
-    const dotpath = compositeKey.substring(sep + 2);
-
-    if (!grouped.has(file)) {
-      grouped.set(file, {});
-    }
-    grouped.get(file)![dotpath] = value;
-  });
-
-  return grouped;
-}
 
 async function main() {
   console.log('🔄 Unflattening translated files...\n');
@@ -60,18 +39,49 @@ async function main() {
     return;
   }
 
+  // Group chunk files by locale
+  const localeChunks = new Map<string, string[]>();
+  translationFiles.forEach((file) => {
+    const parsed = parseChunkFilename(file);
+    if (!parsed) return; // skip non-chunk files
+    const { locale } = parsed;
+    if (!localeChunks.has(locale)) {
+      localeChunks.set(locale, []);
+    }
+    localeChunks.get(locale)!.push(file);
+  });
+
   // Cache key orders per source file
   const keyOrders = new Map<string, string[]>();
 
   let totalFiles = 0;
 
-  translationFiles.forEach((translationFile) => {
-    const locale = translationFile.replace('.json', '');
-    const filePath = path.join(TRANSLATION_DIR, translationFile);
-    const grouped = parseIntermediateFile(filePath);
+  localeChunks.forEach((chunks, locale) => {
+    // Merge all chunks into one flat object
+    const mergedFlat: Record<string, string> = {};
+    chunks.sort().forEach((chunkFile) => {
+      const filePath = path.join(TRANSLATION_DIR, chunkFile);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const flat = JSON.parse(content) as Record<string, string>;
+      Object.assign(mergedFlat, flat);
+    });
+
+    console.log(`📦 ${locale}: merged ${chunks.length} chunk(s), ${Object.keys(mergedFlat).length} keys`);
+
+    // Parse merged flat into grouped-by-source-file structure
+    const grouped = new Map<string, Record<string, string>>();
+    Object.entries(mergedFlat).forEach(([compositeKey, value]) => {
+      const sep = compositeKey.indexOf('::');
+      if (sep === -1) return;
+      const sourceFile = compositeKey.substring(0, sep);
+      const dotpath = compositeKey.substring(sep + 2);
+      if (!grouped.has(sourceFile)) {
+        grouped.set(sourceFile, {});
+      }
+      grouped.get(sourceFile)![dotpath] = value;
+    });
 
     grouped.forEach((flat, sourceFile) => {
-      // Get key order from en source file (cached)
       if (!keyOrders.has(sourceFile)) {
         const enPath = path.join(MESSAGES_DIR, 'en', sourceFile);
         const enJson = JSON.parse(fs.readFileSync(enPath, 'utf-8')) as NestedObject;

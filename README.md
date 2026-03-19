@@ -19,9 +19,9 @@ messages/zh/main.json  (auto-synced)
 The pipeline:
 
 1. **Compare** — find missing keys per locale
-2. **Extract** — generate flat `draft/{locale}.json` files with `{file}::{dotpath}` keys
+2. **Extract** — generate flat `draft/{locale}-{NNN}.json` chunk files with `{file}::{dotpath}` keys (max 200 keys per chunk)
 3. **Copy draft** — copy draft → translation (preserves interrupted work)
-4. **Translate** — LLM translates `translation/{locale}.json` values
+4. **Translate** — LLM translates `translation/{locale}-{NNN}.json` values (one subagent per chunk)
 5. **Unflatten** — convert flat translated files back to nested JSON
 6. **Merge** — write translations into `messages/{locale}/`, preserving key order
 7. **Test** — validate all locales match en/ structure
@@ -66,7 +66,7 @@ If you have Claude Code or Cursor installed, just run:
 /sync-locales-from-en
 ```
 
-The AI agent handles the full pipeline automatically, launching parallel translation subagents per locale.
+The AI agent handles the full pipeline automatically, launching parallel translation subagents per chunk file (max 200 keys each).
 
 ### Approach 2: Manual via pnpm
 
@@ -86,9 +86,10 @@ The translate step is intentionally manual — use whatever LLM or translation s
 
 ## Intermediate format
 
-Translation files use a flat JSON format to avoid broken nested JSON from LLM output:
+Translation files use a flat JSON format split into chunks (max 200 keys per file) to avoid broken nested JSON and Write tool truncation from LLM output:
 
 ```json
+// draft/es-001.json (first 200 keys)
 {
   "main.json::home.feature.title": "Welcome to our platform",
   "main.json::home.feature.description": "The best way to manage your projects",
@@ -96,7 +97,7 @@ Translation files use a flat JSON format to avoid broken nested JSON from LLM ou
 }
 ```
 
-Keys are never modified — only values get translated.
+Keys are never modified — only values get translated. Chunks are merged automatically during the unflatten step.
 
 ## Key ordering
 
@@ -111,15 +112,15 @@ This is enforced by a custom JSON serializer since V8 always enumerates integer 
 
 ## Known issues
 
-### Subagent output truncation
+### Subagent output truncation (mitigated)
 
-When a locale has many missing keys (200+), LLM subagents may truncate the output — writing only ~64 keys instead of the full set. This happens because the translated JSON exceeds the Write tool's practical limit in a single call.
+When a locale has many missing keys (200+), LLM subagents may truncate the output. This is now mitigated by batch chunking — `pnpm i18n:extract` splits large locales into chunk files of max 200 keys each (`es-001.json`, `es-002.json`, etc.), and one subagent handles each chunk.
 
-**Workaround:** The `draft/` → `translation/` split helps here. If a subagent fails or truncates, `draft/` stays pristine. Delete the bad `translation/{locale}.json`, re-run `pnpm i18n:copy-draft`, and retry. For large key sets, consider splitting the work or instructing the subagent to use Edit instead of Write.
+If a chunk still fails, delete the bad `translation/{locale}-{NNN}.json`, re-run `pnpm i18n:copy-draft`, and retry.
 
 ### Subagent freezing / interruption
 
-Subagents can freeze or be interrupted mid-translation. The `translation/` layer preserves partially-completed work — `pnpm i18n:copy-draft` skips locales that already have a file in `translation/`, so completed translations aren't lost.
+Subagents can freeze or be interrupted mid-translation. The `translation/` layer preserves partially-completed work — `pnpm i18n:copy-draft` skips chunks that already have a file in `translation/`, so completed translations aren't lost.
 
 ## Project structure
 
@@ -136,7 +137,7 @@ Subagents can freeze or be interrupted mid-translation. The `translation/` layer
     test-locales.ts                 # validate structure
   temp/YYYY-MM-DD/                  # daily working directory
     reference/                      # English values for missing keys
-    draft/                          # pristine flat files (never modified)
+    draft/                          # pristine chunk files (never modified)
     translation/                    # working copy (subagents write here)
     final/                          # unflattened nested JSON
 ```

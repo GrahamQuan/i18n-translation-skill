@@ -29,6 +29,26 @@ export const TRANSLATION_DIR = path.join(TEMP_ROOT, 'translation');
 export const FINAL_DIR = path.join(TEMP_ROOT, 'final');
 export const MESSAGES_DIR_EXPORT = MESSAGES_DIR;
 
+/** Maximum number of keys per chunk file */
+export const BATCH_SIZE = 200;
+
+/**
+ * Generate a chunk filename: e.g. "es-001.json"
+ */
+export function getChunkFilename(locale: string, index: number): string {
+  return `${locale}-${String(index + 1).padStart(3, '0')}.json`;
+}
+
+/**
+ * Parse a chunk filename back to locale and index.
+ * Returns null if the filename doesn't match the chunk pattern.
+ */
+export function parseChunkFilename(filename: string): { locale: string; index: number } | null {
+  const match = filename.replace('.json', '').match(/^(.+)-(\d{3})$/);
+  if (!match) return null;
+  return { locale: match[1], index: parseInt(match[2], 10) - 1 };
+}
+
 /**
  * Known language names for translation prompts.
  * If a locale isn't here, falls back to the locale code itself.

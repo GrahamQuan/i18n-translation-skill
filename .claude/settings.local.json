@@ -4,7 +4,8 @@
       "Bash(pnpm:*)",
       "Bash(npx tsc:*)",
       "Edit(.claude/skills/sync-locales-from-en/temp/**)",
-      "Write(.claude/skills/sync-locales-from-en/temp/**)"
+      "Write(.claude/skills/sync-locales-from-en/temp/**)",
+      "Bash(xargs ls:*)"
     ]
   }
 }

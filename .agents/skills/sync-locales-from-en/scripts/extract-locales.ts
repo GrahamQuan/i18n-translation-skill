@@ -18,6 +18,8 @@ import {
   DRAFT_DIR,
   MESSAGES_DIR_EXPORT,
   unflattenWithOrder,
+  BATCH_SIZE,
+  getChunkFilename,
   type MissingReport,
   type NestedObject,
 } from './helpers';
@@ -126,9 +128,18 @@ async function main() {
       });
     });
 
-    const outputPath = path.join(DRAFT_DIR, `${locale}.json`);
-    fs.writeFileSync(outputPath, `${JSON.stringify(flat, null, 2)}\n`);
-    console.log(`✅ draft/${locale}.json: ${Object.keys(flat).length} keys`);
+    // Split into chunks of BATCH_SIZE
+    const entries = Object.entries(flat);
+    const chunkCount = Math.ceil(entries.length / BATCH_SIZE);
+
+    for (let i = 0; i < chunkCount; i++) {
+      const chunkEntries = entries.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+      const chunkObj = Object.fromEntries(chunkEntries);
+      const chunkFile = getChunkFilename(locale, i);
+      const outputPath = path.join(DRAFT_DIR, chunkFile);
+      fs.writeFileSync(outputPath, `${JSON.stringify(chunkObj, null, 2)}\n`);
+      console.log(`✅ draft/${chunkFile}: ${chunkEntries.length} keys`);
+    }
   });
 
   const localeCount = localeGroups.size;
