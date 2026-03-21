@@ -31,13 +31,25 @@ The pipeline:
 ### As a Claude Code / Cursor skill
 
 1. Install the skill (method depends on skills.sh or manual installation)
-2. Add to your project's `.gitignore`:
+2. Run the setup script to configure your project automatically:
+   ```bash
+   bash .claude/skills/sync-locales-from-en/scripts/setup.sh
+   ```
+   This will:
+   - Add all `i18n:*` scripts to your `package.json` (appended to the end of scripts)
+   - Add temp file exclusions to your `.gitignore`
+   - Install `tsx` and `@types/node` as devDependencies (auto-detects pnpm/yarn/bun/npm)
+
+<details>
+<summary>Manual setup (if you prefer not to use the setup script)</summary>
+
+1. Add to your project's `.gitignore`:
    ```
    # i18n translation temp files
    .agents/skills/sync-locales-from-en/temp/
    .claude/skills/sync-locales-from-en/temp/
    ```
-3. Add to your project's `package.json` scripts:
+2. Add to your project's `package.json` scripts:
    ```json
    {
      "scripts": {
@@ -50,11 +62,12 @@ The pipeline:
      }
    }
    ```
-4. Install dependencies: `pnpm add -D tsx @types/node`
+3. Install dependencies: `pnpm add -D tsx @types/node`
+</details>
 
 ### Standalone (without AI skill)
 
-Clone this repo into your project and follow steps 2-4 above.
+Clone this repo into your project and run the setup script, or follow the manual setup steps above.
 
 ## Usage
 
@@ -135,6 +148,7 @@ Subagents can freeze or be interrupted mid-translation. The `translation/` layer
     unflatten-translations.ts       # flat → nested JSON
     merge-translations.ts           # merge into messages/
     test-locales.ts                 # validate structure
+    setup.sh                        # auto-setup script (package.json, .gitignore, deps)
   temp/YYYY-MM-DD/                  # daily working directory
     reference/                      # English values for missing keys
     draft/                          # pristine chunk files (never modified)

@@ -6,7 +6,8 @@
       "Edit(.claude/skills/sync-locales-from-en/temp/**)",
       "Write(.claude/skills/sync-locales-from-en/temp/**)",
       "Bash(xargs ls:*)",
-      "Bash(wc -l .claude/skills/sync-locales-from-en/temp/**)"
+      "Bash(wc -l .claude/skills/sync-locales-from-en/temp/**)",
+      "Bash(chmod:*)"
     ]
   }
 }
