@@ -1,6 +1,6 @@
 /**
  * Helper utilities for i18n translation workflow
- * Used by compare-locales.ts, merge-translations.ts, and Claude Code during translation
+ * Used by compare-locales.ts, merge-translations.ts, and AI skill runs during translation
  */
 
 import * as fs from 'fs';
@@ -19,8 +19,15 @@ export interface MissingReport {
 
 const MESSAGES_DIR = path.join(process.cwd(), 'messages');
 
+// Canonical skill path is .agents/skills; .claude/skills remains a compatibility fallback.
+const SKILL_DIR_CANDIDATES = [
+  path.join(process.cwd(), '.agents', 'skills', 'sync-locales-from-en'),
+  path.join(process.cwd(), '.claude', 'skills', 'sync-locales-from-en'),
+];
+const SKILL_DIR =
+  SKILL_DIR_CANDIDATES.find((candidate) => fs.existsSync(candidate)) ?? SKILL_DIR_CANDIDATES[0];
+
 // Temp directory structure for translation workflow
-const SKILL_DIR = path.join(process.cwd(), '.claude', 'skills', 'sync-locales-from-en');
 const TODAY = new Date().toISOString().split('T')[0];
 const TEMP_ROOT = path.join(SKILL_DIR, 'temp', TODAY);
 export const REFERENCE_DIR = path.join(TEMP_ROOT, 'reference');

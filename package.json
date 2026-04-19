@@ -4,13 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "i18n:compare": "tsx .claude/skills/sync-locales-from-en/scripts/compare-locales.ts",
-    "i18n:extract": "tsx .claude/skills/sync-locales-from-en/scripts/extract-locales.ts",
-    "i18n:copy-draft": "tsx .claude/skills/sync-locales-from-en/scripts/copy-locales-draft.ts",
-    "i18n:translate": "echo 'You should use LLM to translate the files in .claude/skills/sync-locales-from-en/temp/yyyy-mm-dd/translation'",
-    "i18n:unflatten": "tsx .claude/skills/sync-locales-from-en/scripts/unflatten-translations.ts",
-    "i18n:merge": "tsx .claude/skills/sync-locales-from-en/scripts/merge-translations.ts",
-    "i18n:test": "tsx .claude/skills/sync-locales-from-en/scripts/test-locales.ts"
+    "i18n:compare": "tsx .agents/skills/sync-locales-from-en/scripts/compare-locales.ts",
+    "i18n:extract": "tsx .agents/skills/sync-locales-from-en/scripts/extract-locales.ts",
+    "i18n:copy-draft": "tsx .agents/skills/sync-locales-from-en/scripts/copy-locales-draft.ts",
+    "i18n:translate": "echo 'You should use LLM to translate the files in .agents/skills/sync-locales-from-en/temp/yyyy-mm-dd/translation'",
+    "i18n:unflatten": "tsx .agents/skills/sync-locales-from-en/scripts/unflatten-translations.ts",
+    "i18n:merge": "tsx .agents/skills/sync-locales-from-en/scripts/merge-translations.ts",
+    "i18n:test": "tsx .agents/skills/sync-locales-from-en/scripts/test-locales.ts"
   },
   "keywords": [],
   "author": "Graham Quan",

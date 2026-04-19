@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent
 batchSize: 50
 metadata:
   author: GrahamQuan
-  version: "1.1.0"
+  version: "1.4.3"
 ---
 
 # sync-locales-from-en
@@ -18,11 +18,12 @@ Synchronize all locale translation files with `messages/en/` as the base referen
 
 1. **Compare** — `pnpm i18n:compare` finds missing keys per locale
 2. **Extract** — `pnpm i18n:extract` generates reference files + draft chunk files for LLM translation
-3. **Prepare** — Copy `draft/` → `translation/` (only locales not yet in `translation/`)
-4. **Translate** — Sonnet subagents translate flat `translation/{locale}-{NNN}.json` chunk files in parallel
-5. **Unflatten** — `pnpm i18n:unflatten` converts translated files into nested JSON in `final/`
-6. **Merge** — `pnpm i18n:merge` writes translations back, preserving en.json key order
-7. **Test** — `pnpm i18n:test` validates all locales match en.json structure
+3. **Blueprint** — Generate run-scoped advisor/executor contracts in `temp/YYYY-MM-DD/blueprint/`
+4. **Prepare** — Copy `draft/` → `translation/`, preserving chunk files only for a true resume with the same run-context signature
+5. **Translate** — Executor subagents translate flat `translation/{locale}-{NNN}.json` chunk files through a bounded queue
+6. **Unflatten** — `pnpm i18n:unflatten` converts translated files into nested JSON in `final/`
+7. **Merge** — `pnpm i18n:merge` writes translations back, preserving en.json key order
+8. **Test** — `pnpm i18n:test` validates all locales match en.json structure
 
 ## Hard constraints (must follow)
 
@@ -36,8 +37,78 @@ Synchronize all locale translation files with `messages/en/` as the base referen
   - `pnpm i18n:unflatten`
   - `pnpm i18n:merge`
   - `pnpm i18n:test`
-- Translation is handled by sonnet subagents via the Agent tool. Do not call external translation APIs.
+- Before launching executors, generate a run-scoped `blueprint/` directory under `temp/YYYY-MM-DD/`.
+- Blueprint generation is owned by the advisor during the skill run. Do not add or call a dedicated `pnpm i18n:blueprint` script for this step.
+- Pass executor tasks as a minimal JSON task envelope whenever the runtime supports it. Prefer file refs such as `translation_file_ref` and `blueprint_refs` over large inline payloads.
+- Enforce a strict executor output shape. If the runtime cannot enforce structured output directly, ask for the same fields in plain text or JSON text.
+- Do not wait forever for executors. The advisor must use bounded polling, explicit timeout handling, and replacement retries for stuck chunks.
+- Do not reuse `translation/` or `final/` artifacts from the same date unless the current run context exactly matches the previous run context.
+- Do not fan out executors without a queue. The advisor must launch executors through a bounded worker pool and keep headroom for retries and orchestration.
+- Translation is handled by executor subagents via the Agent tool. Do not call external translation APIs.
 - If a required script is missing or fails, stop and ask the user before taking another approach.
+
+## Model strategy
+
+- This skill must stay provider-agnostic across GPT and Claude families. Do not hard-code Claude-only model names into the workflow.
+- Advisor role: run compare/extract/prepare, launch executor subagents, wait for completion, summarize failures, and decide whether any chunks need retry.
+- Executor role: translate exactly one `translation/{locale}-{NNN}.json` chunk file and write the translated JSON back to the same path.
+- Blueprint = the run-scoped behavioral contract stored in `temp/YYYY-MM-DD/blueprint/`.
+- Context = task-specific inputs for a single executor. Keep it small and pass it as a JSON envelope with refs instead of repeating the full translation instructions in every prompt.
+- Keep the advisor simple and push chunk-level translation complexity down to executors.
+- The advisor must treat a run as resumable only when the run-context signature matches exactly. Otherwise it is a new run on the same date and stale derived artifacts must be invalidated before translation resumes.
+- GPT advisor default: `gpt-5.4` with `reasoning.effort: "low"` by default. Raise to `"medium"` when the run needs more careful coordination or retry decisions.
+- GPT executor default: `gpt-5.4-mini` with `reasoning.effort: "none"` by default. Raise to `"low"` only for trickier chunks with dense placeholders, markup, or ambiguous phrasing.
+- Claude advisor default: `claude-opus-4-7` with `thinking: { type: "adaptive" }` and `effort: "medium"`.
+- Claude executor default: `claude-sonnet-4-6` with `thinking: { type: "adaptive" }` and `effort: "low"`.
+- If an exact model ID is unavailable in the current runtime, use the nearest same-tier model from the same family: flagship model for the advisor, balanced medium/mini model for the executors.
+- Prefer GPT defaults in OpenAI/Codex environments and Claude defaults in Claude environments.
+
+## Blueprint artifacts
+
+Before any executor launch, generate a run-scoped `blueprint/` directory at `temp/YYYY-MM-DD/blueprint/` with these files:
+
+- `advisor.md` — human-readable run intent for the advisor role
+- `advisor.json` — machine-readable advisor contract for sequencing, model defaults, directories, and retry policy
+- `executor-translation.md` — human-readable translation rules for executor subagents
+- `executor-translation.json` — machine-readable executor contract with input schema, invariants, and output schema
+
+Rules for these files:
+
+- The advisor LLM writes these files directly during the skill run. Executors only read them.
+- Do not create a repo script for blueprint generation. This is a runtime artifact owned by the advisor.
+- Generate them fresh for a new run.
+- If resuming an interrupted run on the same date and the files already exist, reuse them only when the run-context signature matches exactly.
+- The `.json` files are the runtime source of truth if the `.md` wording ever drifts.
+- Do not store these files under `reference/`. `reference/` is for source-content artifacts, while `blueprint/` is for run behavior.
+
+Required advisor contract content:
+
+- Goal: sync missing locale keys from `messages/en/`
+- Ordered steps: compare, extract, blueprint, prepare, translate, unflatten, merge, test
+- `run_context_signature`
+- `run_context_signature_input`
+- `max_parallel_executors`
+- Model defaults for advisor and executor per provider
+- Directory refs for `blueprint/`, `reference/`, `draft/`, `translation/`, and `final/`
+- `chunk_registry`
+- Retry guidance for failed or truncated executor chunks
+- Ref to `executor-translation.json` as the executor contract
+
+Required executor contract content:
+
+- Role: executor
+- Task: translate exactly one chunk file
+- Input schema with `locale`, `language`, `translation_file_ref`, and blueprint refs
+- Invariants:
+  - Keep JSON keys unchanged
+  - Translate string values only
+  - Preserve HTML tags exactly
+  - Preserve `{variable}` placeholders exactly
+  - Preserve markdown, newlines, and other formatting
+  - Do not translate brand or product names
+- Output schema:
+  - Write translations back to the same `translation_file_ref`
+  - Return a machine-readable status summary with `status`, `locale`, `chunk_file`, and optional `notes`
 
 ## Prerequisites
 
@@ -46,7 +117,7 @@ Synchronize all locale translation files with `messages/en/` as the base referen
 
 ## Scripts
 
-All scripts live in `.claude/skills/sync-locales-from-en/scripts/`:
+All scripts live in `.agents/skills/sync-locales-from-en/scripts/`:
 
 - `helpers.ts` — Shared utilities (flatten, unflatten, key ordering, locale discovery, temp dir constants)
 - `compare-locales.ts` — Find missing keys per locale per file, output report to `temp/YYYY-MM-DD/reference/`
@@ -59,7 +130,12 @@ All scripts live in `.claude/skills/sync-locales-from-en/scripts/`:
 ## Temp directory layout
 
 ```
-.claude/skills/sync-locales-from-en/temp/YYYY-MM-DD/
+.agents/skills/sync-locales-from-en/temp/YYYY-MM-DD/
+  blueprint/
+    advisor.md                   # Human-readable advisor behavior snapshot for this run
+    advisor.json                 # Machine-readable advisor contract
+    executor-translation.md      # Human-readable executor translation rules
+    executor-translation.json    # Machine-readable executor contract
   reference/
     missing-keys-report.json
     main.json                    # English values for missing keys (union across locales)
@@ -72,9 +148,9 @@ All scripts live in `.claude/skills/sync-locales-from-en/scripts/`:
     fr-001.json
     zh-001.json
   translation/
-    de-001.json                  # Copied from draft/, subagents write translations here
+    de-001.json                  # Copied from draft/, executor subagents write translations here
     de-002.json
-    es-001.json                  # If a subagent is interrupted, this chunk persists
+    es-001.json                  # If an executor subagent is interrupted, this chunk persists
     fr-001.json
     zh-001.json
   final/
@@ -123,46 +199,153 @@ Run `pnpm i18n:extract` to generate:
 - `temp/YYYY-MM-DD/reference/{file}.json` — English values for all missing keys (union across locales)
 - `temp/YYYY-MM-DD/draft/{locale}-{NNN}.json` — Flat JSON chunks with `{file}::{dotpath}` keys and English values (max 50 keys per chunk)
 
-### Step 3: Prepare translation/
+### Step 3: Generate blueprint/
 
-Run `pnpm i18n:copy-draft` to copy `draft/{locale}-{NNN}.json` → `translation/{locale}-{NNN}.json`. Chunks already in `translation/` (from a previous interrupted run) are skipped — partially-translated files are preserved.
+The advisor must create `temp/YYYY-MM-DD/blueprint/` directly and write the run-scoped advisor/executor contract files:
 
-### Step 4: Translate (sonnet subagents)
+- `blueprint/advisor.md`
+- `blueprint/advisor.json`
+- `blueprint/executor-translation.md`
+- `blueprint/executor-translation.json`
 
-Launch one sonnet subagent per chunk file using the Agent tool with `run_in_background: true` and `model: "sonnet"`. All subagents run in parallel.
+Write these files before any executor launch. If the current run is a resume of the same run context, reuse the existing files; otherwise rewrite all four so they match the current compare/extract output.
 
-Each subagent translates one chunk file at `temp/YYYY-MM-DD/translation/{locale}-{NNN}.json`.
+Advisor generation checklist:
 
-Each subagent receives this prompt template (fill in `{locale}`, `{language}`, and `{translation_file}`):
+- Create the `blueprint/` directory under the current `temp/YYYY-MM-DD/`.
+- Derive the current run context from `reference/missing-keys-report.json`, the current sorted draft chunk filenames, the batch size, and the provider model defaults.
+- Build `run_context_signature_input` as a canonical JSON object with:
+  - `batch_size`
+  - `model_defaults`
+  - `draft_chunk_files` as a sorted array
+  - `compare_report` as the sorted `missing-keys-report.json` content, normalized to `locale`, `file`, and `missingKeys`
+- Build `run_context_signature` from that canonical object. If hashing is easy in the runtime, use a deterministic hash of the canonical JSON string. If hashing is not available, store the canonical JSON string itself as the signature.
+- Reuse an existing blueprint only if both `run_context_signature` and `run_context_signature_input` match exactly.
+- Set `max_parallel_executors` for this run:
+  - Default to `4`
+  - If the runtime clearly exposes fewer safe worker slots, lower it accordingly
+  - Never set it to `0`
+- Write `advisor.md` as a concise human-readable summary of the current run: goal, ordered steps, directories, model defaults, locale/chunk counts, and retry guidance.
+- Write `advisor.json` as the machine contract for this run, including:
+  - `contract_version`
+  - `goal`
+  - `run_context_signature`
+  - `run_context_signature_input`
+  - `max_parallel_executors`
+  - `directories`
+  - `workflow.ordered_steps`
+  - `model_defaults`
+  - `locale_summaries`
+  - `chunk_registry`
+  - `retry_policy`
+  - `executor_contract_refs`
+- Write `executor-translation.md` as the human-readable translation contract executors should follow.
+- Write `executor-translation.json` as the machine contract executors should follow, including:
+  - `contract_version`
+  - `role`
+  - `task`
+  - `input_schema`
+  - `invariants`
+  - `output_schema`
+  - `task_envelope_example`
+- Use file refs in the JSON contract so executors can read blueprint files instead of receiving duplicated prompt text.
+- Initialize `chunk_registry` for a new run with one entry per chunk file:
+  - `chunk_file`
+  - `locale`
+  - `translation_file_ref`
+  - `status`: `pending`
+  - `attempt_count`: `0`
+  - `model_used`: `null`
+  - `last_result_notes`: `[]`
+- On a true resume, reuse the existing `chunk_registry`. If a chunk exists in `draft/` or `translation/` but is missing from the registry, reconstruct it conservatively as `pending`.
 
-```
-You are a professional translator. Translate the JSON file at `{translation_file}` from English to {language} ({locale}).
+### Step 4: Prepare translation/
 
-The file is a flat JSON object where keys use the format `{source_file}::{dotpath}` and values are English text:
+Before running `pnpm i18n:copy-draft`, decide whether this is a true resume or a new same-date run:
 
+- If `run_context_signature` matches the existing blueprint exactly, this is a true resume. Preserve existing `translation/` and `final/` artifacts for this date.
+- If `run_context_signature` does not match, this is a new same-date run. Invalidate stale derived artifacts before continuing:
+  - Delete all files under `translation/` for the current date
+  - Delete all files under `final/` for the current date
+  - Keep `reference/` and `draft/` from the current compare/extract run
+  - Rewrite all blueprint files for the new signature
+  - Reinitialize `chunk_registry` so every current chunk starts as `pending`
+
+Then run `pnpm i18n:copy-draft` to copy `draft/{locale}-{NNN}.json` → `translation/{locale}-{NNN}.json`. Chunks already in `translation/` are skipped only for a true resume with a matching run-context signature.
+
+### Step 5: Translate (executor subagents)
+
+Keep the orchestrator on the configured advisor model from `blueprint/advisor.json`.
+
+Launch executors through a bounded queue using `max_parallel_executors` from `blueprint/advisor.json`. Do not launch every chunk at once.
+
+Executor model examples:
+- GPT executor: `model: "gpt-5.4-mini"` with `reasoning.effort: "none"` by default, optionally `"low"` for difficult chunks
+- Claude executor: `model: "claude-sonnet-4-6"` with `thinking: { type: "adaptive" }` and `effort: "low"`
+
+Each executor subagent translates one chunk file at `temp/YYYY-MM-DD/translation/{locale}-{NNN}.json`.
+
+Each executor subagent should receive the executor blueprint refs plus a minimal JSON task envelope. Example:
+
+```json
 {
-  "main.json::home.title": "Welcome",
-  "ui.json::buttons.submit": "Submit"
+  "role": "executor",
+  "task": "translate_chunk",
+  "locale": "{locale}",
+  "language": "{language}",
+  "translation_file_ref": ".agents/skills/sync-locales-from-en/temp/YYYY-MM-DD/translation/{locale}-{NNN}.json",
+  "blueprint_refs": [
+    ".agents/skills/sync-locales-from-en/temp/YYYY-MM-DD/blueprint/executor-translation.md",
+    ".agents/skills/sync-locales-from-en/temp/YYYY-MM-DD/blueprint/executor-translation.json"
+  ],
+  "output_schema": {
+    "status": "ok | retry_needed | failed",
+    "locale": "{locale}",
+    "chunk_file": "{locale}-{NNN}.json",
+    "notes": []
+  }
 }
-
-Instructions:
-1. Read the JSON file at `{translation_file}`.
-2. Translate ONLY the string values to {language}. Keep all JSON keys exactly as-is.
-3. Write the translated JSON back to the same file path.
-
-Translation rules:
-- Translations must be SEO-friendly and natural for native speakers of {language}
-- Preserve all HTML tags exactly as-is (e.g. <br>, <strong>, <a href="...">)
-- Preserve all {variable} placeholders exactly as-is (e.g. {name}, {count})
-- Preserve special formatting (newlines, markdown, etc.)
-- Do not translate brand names or product names
-
-Read the file, translate all values, write it back.
 ```
 
-`{translation_file}` should be set to `.claude/skills/sync-locales-from-en/temp/YYYY-MM-DD/translation/{locale}-{NNN}.json`.
+If the runtime only accepts a plain-text prompt, embed the same JSON envelope verbatim and point to the blueprint refs. Do not repeat the full translation rules inline for every executor unless you have no other option.
 
-After launching all subagents, wait for all to complete by polling with `TaskOutput`.
+Executor monitoring and retry rules:
+
+- Track every chunk in an advisor-side registry with:
+  - `chunk_file`
+  - `locale`
+  - `status`: `pending | running | ok | retry_needed | failed | timed_out`
+  - `attempt_count`
+  - `model_used`
+  - `launch_time`
+  - `last_update_time`
+- Build the initial pending queue from `chunk_registry`:
+  - enqueue chunks with status `pending`, `retry_needed`, `failed`, or `timed_out`
+  - on a resumed run, convert any stale `running` entries from the previous attempt into `timed_out` and enqueue them
+  - do not enqueue chunks whose status is already `ok`
+- Preserve `ok` chunks on a true resume. Do not relaunch executors for them and do not overwrite their existing translation files.
+- Keep at most `max_parallel_executors` active executors at any time.
+- When one executor finishes, immediately update its registry entry and launch the next pending chunk if any remain.
+- Poll executor results with bounded waits. Do not block indefinitely on `TaskOutput`.
+- Poll at least every 30 to 60 seconds while any chunk is `running`.
+- If an executor does not reach a final status within 5 minutes of launch, mark that attempt `timed_out`.
+- When a chunk attempt times out or returns `retry_needed`, immediately relaunch a replacement executor for that single chunk instead of waiting for all other chunks to finish first.
+- Retry ladder for a single chunk:
+  - Attempt 1: default executor model
+  - Attempt 2: same executor model with stronger reasoning if available
+    - GPT: raise `reasoning.effort` from `"none"` to `"low"`
+    - Claude: keep `claude-sonnet-4-6` and retry once with the same contract
+  - Attempt 3: escalate that one chunk to the advisor-tier model
+    - GPT: `gpt-5.4` with `reasoning.effort: "low"`
+    - Claude: `claude-opus-4-7` with adaptive thinking and `effort: "medium"`
+- If a chunk still fails after 3 total attempts, mark it `failed`, include the reason in the advisor summary, and stop before Step 6.
+- Do not run `unflatten`, `merge`, or `test` unless every chunk is `ok`.
+- At the end of Step 5, report:
+  - chunks succeeded
+  - chunks skipped because they were already `ok` on resume
+  - chunks retried
+  - chunks failed
+  - chunks that require manual follow-up
 
 Language mapping (locale → language name):
 - de → German, es → Spanish, fr → French, zh → Simplified Chinese
@@ -171,19 +354,19 @@ Language mapping (locale → language name):
 - th → Thai, tw → Traditional Chinese, vi → Vietnamese
 - For unknown locales, use the locale code as the language name
 
-### Step 5: Unflatten
+### Step 6: Unflatten
 
 Run `pnpm i18n:unflatten` to merge translated `translation/{locale}-{NNN}.json` chunks per locale, then convert into nested JSON at `final/{locale}/{file}.json`.
 
-### Step 6: Merge
+### Step 7: Merge
 
 Run `pnpm i18n:merge` to merge translated files from `temp/YYYY-MM-DD/final/{locale}/{file}.json` into `messages/{locale}/{file}.json`. Existing translations are preserved; new keys are added. Key order follows en/{file}.json.
 
-### Step 7: Test
+### Step 8: Test
 
 Run `pnpm i18n:test` to validate all locale files match en/ structure.
 
-Report summary: which locales succeeded, which failed, which need retry.
+Report summary: which locales succeeded, which failed, which chunks were retried, and which need manual retry.
 
 ## Translation rules
 
@@ -201,8 +384,8 @@ Basic pipeline: compare → extract → translate (Google Translate free API) �
 
 ### v1.5 (previous)
 - Directory-based messages: `messages/{locale}/{file}.json`
-- Sonnet subagents replace Google Translate
-- Parallel subagents per locale for speed
+- LLM executor subagents replace Google Translate
+- Parallel executor subagents per locale for speed
 - Batch keys (25 per prompt cycle) to reduce token overhead
 - `messages/en/` as sole base
 
@@ -210,9 +393,12 @@ Basic pipeline: compare → extract → translate (Google Translate free API) �
 - Flat JSON format: `{file}::{dotpath}` keys for safer LLM translation
 - No nested JSON during translation — eliminates broken JSON structure risk
 - Token-efficient: flat key-value pairs instead of nested JSON
+- Run-scoped blueprint snapshots in `temp/YYYY-MM-DD/blueprint/`
+- Structured executor task envelopes with file refs instead of large repeated prompts
 - Draft/translation split: `draft/` stays pristine, `translation/` is the working copy
 - Interrupted subagents can be resumed — `translation/{locale}-{NNN}.json` persists
 - New `unflatten` step converts translated flat files back to nested JSON
+- Provider-agnostic advisor/executor model split across GPT and Claude families
 - Batch chunking (batchSize: 50): large locales split into `{locale}-001.json`, `{locale}-002.json`, etc.
-  - One subagent per chunk — prevents Write tool truncation on large key sets
+  - One executor subagent per chunk — prevents Write tool truncation on large key sets
   - Chunks merge automatically during unflatten step

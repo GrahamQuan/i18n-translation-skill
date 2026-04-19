@@ -28,13 +28,13 @@ echo "1) Updating package.json scripts..."
 # The i18n scripts to add
 declare -A I18N_SCRIPTS
 I18N_SCRIPTS=(
-  ["i18n:compare"]="tsx .claude/skills/sync-locales-from-en/scripts/compare-locales.ts"
-  ["i18n:extract"]="tsx .claude/skills/sync-locales-from-en/scripts/extract-locales.ts"
-  ["i18n:copy-draft"]="tsx .claude/skills/sync-locales-from-en/scripts/copy-locales-draft.ts"
-  ["i18n:translate"]="echo 'You should use LLM to translate the files in .claude/skills/sync-locales-from-en/temp/yyyy-mm-dd/translation'"
-  ["i18n:unflatten"]="tsx .claude/skills/sync-locales-from-en/scripts/unflatten-translations.ts"
-  ["i18n:merge"]="tsx .claude/skills/sync-locales-from-en/scripts/merge-translations.ts"
-  ["i18n:test"]="tsx .claude/skills/sync-locales-from-en/scripts/test-locales.ts"
+  ["i18n:compare"]="tsx .agents/skills/sync-locales-from-en/scripts/compare-locales.ts"
+  ["i18n:extract"]="tsx .agents/skills/sync-locales-from-en/scripts/extract-locales.ts"
+  ["i18n:copy-draft"]="tsx .agents/skills/sync-locales-from-en/scripts/copy-locales-draft.ts"
+  ["i18n:translate"]="echo 'You should use LLM to translate the files in .agents/skills/sync-locales-from-en/temp/yyyy-mm-dd/translation'"
+  ["i18n:unflatten"]="tsx .agents/skills/sync-locales-from-en/scripts/unflatten-translations.ts"
+  ["i18n:merge"]="tsx .agents/skills/sync-locales-from-en/scripts/merge-translations.ts"
+  ["i18n:test"]="tsx .agents/skills/sync-locales-from-en/scripts/test-locales.ts"
 )
 
 # Use node to safely modify package.json (preserves formatting)
@@ -50,13 +50,13 @@ if (!pkg.scripts) {
 
 // Scripts to add (appended at the end)
 const newScripts = {
-  'i18n:compare': 'tsx .claude/skills/sync-locales-from-en/scripts/compare-locales.ts',
-  'i18n:extract': 'tsx .claude/skills/sync-locales-from-en/scripts/extract-locales.ts',
-  'i18n:copy-draft': 'tsx .claude/skills/sync-locales-from-en/scripts/copy-locales-draft.ts',
-  'i18n:translate': \"echo 'You should use LLM to translate the files in .claude/skills/sync-locales-from-en/temp/yyyy-mm-dd/translation'\",
-  'i18n:unflatten': 'tsx .claude/skills/sync-locales-from-en/scripts/unflatten-translations.ts',
-  'i18n:merge': 'tsx .claude/skills/sync-locales-from-en/scripts/merge-translations.ts',
-  'i18n:test': 'tsx .claude/skills/sync-locales-from-en/scripts/test-locales.ts'
+  'i18n:compare': 'tsx .agents/skills/sync-locales-from-en/scripts/compare-locales.ts',
+  'i18n:extract': 'tsx .agents/skills/sync-locales-from-en/scripts/extract-locales.ts',
+  'i18n:copy-draft': 'tsx .agents/skills/sync-locales-from-en/scripts/copy-locales-draft.ts',
+  'i18n:translate': \"echo 'You should use LLM to translate the files in .agents/skills/sync-locales-from-en/temp/yyyy-mm-dd/translation'\",
+  'i18n:unflatten': 'tsx .agents/skills/sync-locales-from-en/scripts/unflatten-translations.ts',
+  'i18n:merge': 'tsx .agents/skills/sync-locales-from-en/scripts/merge-translations.ts',
+  'i18n:test': 'tsx .agents/skills/sync-locales-from-en/scripts/test-locales.ts'
 };
 
 // Remove any existing i18n scripts first to avoid duplicates
@@ -87,8 +87,8 @@ GITIGNORE="$PROJECT_ROOT/.gitignore"
 echo "2) Updating .gitignore..."
 
 IGNORE_COMMENT="# i18n translation temp files"
-IGNORE_LINE_1=".agents/skills/sync-locales-from-en/temp/"
-IGNORE_LINE_2=".claude/skills/sync-locales-from-en/temp/"
+IGNORE_LINE=".agents/skills/sync-locales-from-en/temp/"
+LEGACY_IGNORE_LINE=".claude/skills/sync-locales-from-en/temp/"
 
 # Create .gitignore if it doesn't exist
 if [ ! -f "$GITIGNORE" ]; then
@@ -96,30 +96,35 @@ if [ ! -f "$GITIGNORE" ]; then
   echo "  Created .gitignore"
 fi
 
-# Check if entries already exist
-NEEDS_UPDATE=false
-if ! grep -qF "$IGNORE_LINE_1" "$GITIGNORE" || ! grep -qF "$IGNORE_LINE_2" "$GITIGNORE"; then
-  NEEDS_UPDATE=true
+# Remove the legacy Claude-only ignore entry if present
+if grep -qF "$LEGACY_IGNORE_LINE" "$GITIGNORE"; then
+  node -e "
+const fs = require('fs');
+const gitignorePath = '$GITIGNORE';
+const legacyLine = '$LEGACY_IGNORE_LINE';
+const lines = fs.readFileSync(gitignorePath, 'utf8').split(/\r?\n/);
+const filtered = lines.filter((line) => line !== legacyLine);
+fs.writeFileSync(gitignorePath, filtered.join('\n').replace(/\n*$/, '\n'));
+"
+  echo "  Removed legacy Claude temp exclusion from .gitignore"
 fi
 
-if [ "$NEEDS_UPDATE" = true ]; then
+# Check if the canonical entry already exists
+if ! grep -qF "$IGNORE_LINE" "$GITIGNORE"; then
   # Ensure file ends with newline before appending
   if [ -s "$GITIGNORE" ] && [ "$(tail -c 1 "$GITIGNORE")" != "" ]; then
     echo "" >> "$GITIGNORE"
   fi
 
-  # Remove any existing partial entries to avoid duplicates
-  # Then append the full block
   {
     echo ""
     echo "$IGNORE_COMMENT"
-    echo "$IGNORE_LINE_1"
-    echo "$IGNORE_LINE_2"
+    echo "$IGNORE_LINE"
   } >> "$GITIGNORE"
 
-  echo "  Added i18n temp file exclusions to .gitignore"
+  echo "  Added i18n temp file exclusion to .gitignore"
 else
-  echo "  .gitignore already contains i18n temp file exclusions (skipped)"
+  echo "  .gitignore already contains the canonical i18n temp file exclusion (skipped)"
 fi
 
 echo ""
