@@ -83,6 +83,8 @@ messages/zh/main.json  （自动同步）
 
 AI agent 会自动完成整个流程，并按分块文件并行启动 executor subagent（每块最多 50 个键）。
 
+在 Codex/OpenAI 环境里，只有当用户明确要求 subagent、委派或并行 agent work 时，才会并行启动 executor。否则 advisor 应继续在主 agent 中串行处理分块队列，而不是停在 `copy-draft` 之后。
+
 对于 AI 驱动的运行，advisor 在启动 executors 之前还会先把本次运行的行为快照写入 `temp/YYYY-MM-DD/blueprint/`。这样即使之后 skill 文本发生变化，重试或恢复中断任务时仍能保持一致行为。
 
 ### 方式 2：手动执行 pnpm 脚本
@@ -163,7 +165,7 @@ AI skill 采用 advisor/executor 模式：
 
 ### Executor subagent 卡住 / 中断
 
-Executor subagent 在翻译过程中可能卡住或被中断。`translation/` 层会保留已完成部分；在 run-context signature 完全一致的真实恢复场景下，`pnpm i18n:copy-draft` 会跳过 `translation/` 中已存在的分块文件，因此不会丢失已完成内容。
+Executor subagent 在翻译过程中可能卡住或被中断。`translation/` 层会保留已完成部分；在 run-context signature 完全一致的真实恢复场景下，`pnpm i18n:copy-draft` 会跳过 `translation/` 中已存在的分块文件，因此不会丢失已完成内容。Advisor 还应把每个分块的状态持续写回 `blueprint/advisor.json`，这样恢复时才能区分已翻译分块和未处理的 draft 副本。
 
 ## 项目结构
 

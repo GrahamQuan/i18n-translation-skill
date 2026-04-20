@@ -83,6 +83,8 @@ If you have Claude Code, Codex, or Cursor installed, just run:
 
 The AI agent handles the full pipeline automatically, launching parallel executor subagents per chunk file (max 50 keys each).
 
+In Codex/OpenAI environments, parallel executor fan-out happens when the user explicitly asks for subagents, delegation, or parallel agent work. Otherwise the advisor should keep processing the chunk queue serially in the main agent instead of stopping after `copy-draft`.
+
 For AI-driven runs, the advisor also snapshots the run behavior into `temp/YYYY-MM-DD/blueprint/` before launching executors. This keeps retries and resumed runs deterministic even if the skill instructions evolve later.
 
 ### Approach 2: Manual via pnpm
@@ -163,7 +165,7 @@ Executors should also be launched through a bounded worker pool instead of unbou
 
 ### Executor subagent freezing / interruption
 
-Executor subagents can freeze or be interrupted mid-translation. The `translation/` layer preserves partially-completed work, and on a true resume with the same run-context signature `pnpm i18n:copy-draft` skips chunks that already have a file in `translation/`, so completed translations aren't lost.
+Executor subagents can freeze or be interrupted mid-translation. The `translation/` layer preserves partially-completed work, and on a true resume with the same run-context signature `pnpm i18n:copy-draft` skips chunks that already have a file in `translation/`, so completed translations aren't lost. The advisor should also persist chunk status back into `blueprint/advisor.json` so resumes can distinguish translated chunks from untouched draft copies.
 
 ## Project structure
 

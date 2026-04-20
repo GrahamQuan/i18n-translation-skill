@@ -45,6 +45,9 @@ Synchronize all locale translation files with `messages/en/` as the base referen
 - Do not reuse `translation/` or `final/` artifacts from the same date unless the current run context exactly matches the previous run context.
 - Do not fan out executors without a queue. The advisor must launch executors through a bounded worker pool and keep headroom for retries and orchestration.
 - Translation is handled by executor subagents via the Agent tool. Do not call external translation APIs.
+- In Codex/OpenAI runtimes, use `spawn_agent` for executor fan-out only when the user explicitly asked for subagents, delegation, or parallel agent work and the tool is available.
+- If executor fan-out is unavailable in the current runtime or disallowed by policy, do not stop after `copy-draft`. Continue the same chunk queue locally in the advisor/main agent one chunk at a time using the same executor contract.
+- Persist orchestration state. Whenever a chunk status changes, rewrite `blueprint/advisor.json` so `chunk_registry` remains the run-state source of truth across resumes.
 - If a required script is missing or fails, stop and ask the user before taking another approach.
 
 ## Model strategy
@@ -55,10 +58,11 @@ Synchronize all locale translation files with `messages/en/` as the base referen
 - Blueprint = the run-scoped behavioral contract stored in `temp/YYYY-MM-DD/blueprint/`.
 - Context = task-specific inputs for a single executor. Keep it small and pass it as a JSON envelope with refs instead of repeating the full translation instructions in every prompt.
 - Keep the advisor simple and push chunk-level translation complexity down to executors.
+- In Codex environments, prefer `spawn_agent` workers for executor chunks only when delegation is explicitly allowed. Otherwise, the advisor must execute the chunk contract locally and keep draining the queue serially until all chunks are done or a real blocker occurs.
 - The advisor must treat a run as resumable only when the run-context signature matches exactly. Otherwise it is a new run on the same date and stale derived artifacts must be invalidated before translation resumes.
 - GPT advisor default: `gpt-5.4` with `reasoning.effort: "low"` by default. Raise to `"medium"` when the run needs more careful coordination or retry decisions.
 - GPT executor default: `gpt-5.4-mini` with `reasoning.effort: "none"` by default. Raise to `"low"` only for trickier chunks with dense placeholders, markup, or ambiguous phrasing.
-- Claude advisor default: `claude-opus-4-7` with `thinking: { type: "adaptive" }` and `effort: "medium"`.
+- Claude advisor default: `claude-opus-4-6` with `thinking: { type: "adaptive" }` and `effort: "medium"`.
 - Claude executor default: `claude-sonnet-4-6` with `thinking: { type: "adaptive" }` and `effort: "low"`.
 - If an exact model ID is unavailable in the current runtime, use the nearest same-tier model from the same family: flagship model for the advisor, balanced medium/mini model for the executors.
 - Prefer GPT defaults in OpenAI/Codex environments and Claude defaults in Claude environments.
@@ -257,7 +261,10 @@ Advisor generation checklist:
   - `attempt_count`: `0`
   - `model_used`: `null`
   - `last_result_notes`: `[]`
-- On a true resume, reuse the existing `chunk_registry`. If a chunk exists in `draft/` or `translation/` but is missing from the registry, reconstruct it conservatively as `pending`.
+- On a true resume, reuse the existing `chunk_registry`. If a chunk exists in `draft/` or `translation/` but is missing from the registry, reconstruct it from file state:
+  - if `translation/{chunk}` is byte-identical to `draft/{chunk}`, reconstruct it as `pending`
+  - if the translation file has the same key set but different values, reconstruct it as `ok` candidate, run a quick sanity check, and then keep it `ok` or downgrade it to `retry_needed`
+  - if the translation file has missing/extra/reordered keys or invalid JSON, reconstruct it as `retry_needed`
 
 ### Step 4: Prepare translation/
 
@@ -278,6 +285,13 @@ Then run `pnpm i18n:copy-draft` to copy `draft/{locale}-{NNN}.json` → `transla
 Keep the orchestrator on the configured advisor model from `blueprint/advisor.json`.
 
 Launch executors through a bounded queue using `max_parallel_executors` from `blueprint/advisor.json`. Do not launch every chunk at once.
+
+Runtime-specific execution rules:
+
+- Codex/OpenAI with explicit delegation permission: launch each executor chunk with `spawn_agent`, assign exactly one `translation/{locale}-{NNN}.json` file per worker, and keep write ownership disjoint.
+- Codex/OpenAI without explicit delegation permission: process the same queue locally in the advisor/main agent, one chunk at a time, and do not abandon Step 5 just because no subagent was launched.
+- Claude/Cursor-style runtimes with an agent tool: use the bounded executor queue normally.
+- In every runtime, update `chunk_registry` in `blueprint/advisor.json` immediately when a chunk becomes `running`, `ok`, `retry_needed`, `failed`, or `timed_out`.
 
 Executor model examples:
 - GPT executor: `model: "gpt-5.4-mini"` with `reasoning.effort: "none"` by default, optionally `"low"` for difficult chunks
@@ -325,11 +339,12 @@ Executor monitoring and retry rules:
   - do not enqueue chunks whose status is already `ok`
 - Preserve `ok` chunks on a true resume. Do not relaunch executors for them and do not overwrite their existing translation files.
 - Keep at most `max_parallel_executors` active executors at any time.
-- When one executor finishes, immediately update its registry entry and launch the next pending chunk if any remain.
+- When one executor finishes, immediately update its registry entry in memory and in `blueprint/advisor.json`, then launch the next pending chunk if any remain.
 - Poll executor results with bounded waits. Do not block indefinitely on `TaskOutput`.
 - Poll at least every 30 to 60 seconds while any chunk is `running`.
 - If an executor does not reach a final status within 5 minutes of launch, mark that attempt `timed_out`.
 - When a chunk attempt times out or returns `retry_needed`, immediately relaunch a replacement executor for that single chunk instead of waiting for all other chunks to finish first.
+- Local advisor fallback uses the same status transitions as subagents. A locally translated chunk still must be marked `running` before work begins and then `ok`, `retry_needed`, or `failed` after verification.
 - Retry ladder for a single chunk:
   - Attempt 1: default executor model
   - Attempt 2: same executor model with stronger reasoning if available
@@ -337,7 +352,7 @@ Executor monitoring and retry rules:
     - Claude: keep `claude-sonnet-4-6` and retry once with the same contract
   - Attempt 3: escalate that one chunk to the advisor-tier model
     - GPT: `gpt-5.4` with `reasoning.effort: "low"`
-    - Claude: `claude-opus-4-7` with adaptive thinking and `effort: "medium"`
+    - Claude: `claude-opus-4-6` with adaptive thinking and `effort: "medium"`
 - If a chunk still fails after 3 total attempts, mark it `failed`, include the reason in the advisor summary, and stop before Step 6.
 - Do not run `unflatten`, `merge`, or `test` unless every chunk is `ok`.
 - At the end of Step 5, report:
